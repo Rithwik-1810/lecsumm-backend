@@ -1,16 +1,11 @@
-FROM python:3.10-slim
+FROM python:3.10
 
-# Install system dependencies including build tools, git, and Python headers
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    git \
-    build-essential \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install ffmpeg (still needed)
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Upgrade pip, setuptools, and wheel
+# Upgrade pip, setuptools, and wheel (still good practice)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY requirements.txt .
