@@ -1,22 +1,24 @@
 FROM python:3.10
 
-# Install ffmpeg and git (git needed to clone whisper)
-RUN apt-get update && apt-get install -y ffmpeg git && rm -rf /var/lib/apt/lists/*
+# Install system dependencies: ffmpeg, git, and build tools
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Upgrade pip and setuptools
+# Upgrade pip, setuptools, and wheel
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install dependencies from requirements.txt (everything except whisper)
+# First install all dependencies that have binary wheels (so no compilation needed)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Clone and install whisper without its dependencies (already installed)
-RUN git clone https://github.com/openai/whisper.git /tmp/whisper && \
-    cd /tmp/whisper && \
-    pip install --no-cache-dir --no-deps . && \
-    rm -rf /tmp/whisper
+# Now install openai-whisper WITHOUT build isolation, using the already upgraded setuptools
+RUN pip install --no-cache-dir --no-build-isolation openai-whisper==20231117
 
 COPY . .
 
