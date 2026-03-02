@@ -5,11 +5,13 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Upgrade pip, setuptools, and wheel (still good practice)
+# Upgrade pip, setuptools, and wheel
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install dependencies WITHOUT build isolation (uses system setuptools)
+RUN pip install --no-cache-dir --no-build-isolation -r requirements.txt
 
 COPY . .
 
