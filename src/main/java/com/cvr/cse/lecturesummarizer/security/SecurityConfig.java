@@ -29,11 +29,11 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.disable()) // Crucial: Disable Spring's CORS handling
+            .cors(cors -> cors.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()   // <-- must be present
                 .requestMatchers("/health").permitAll()
-                .requestMatchers("/api/test/ping").permitAll()   // for debugging
+                .requestMatchers("/api/test/ping").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
