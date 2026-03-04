@@ -2,7 +2,10 @@ package com.cvr.cse.lecturesummarizer.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -10,11 +13,12 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.util.List;
 
 @Service
 public class AIService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AIService.class);
 
     @Value("${ai.service.url}")
     private String aiServiceUrl;
@@ -43,13 +47,14 @@ public class AIService {
         private String transcript;
         private SummaryDTO summary;
         private List<TaskDTO> tasks;
-        private double durationSeconds;   // <-- ADD THIS FIELD
+        private double durationSeconds;
     }
 
     public AIResponse processLecture(String filePath, String language,
                                      boolean extractTasks, boolean generateSummary) throws Exception {
 
         String url = aiServiceUrl + "/process";
+        logger.info("Calling AI service at: {}", url);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -57,24 +62,30 @@ public class AIService {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
         File file = new File(filePath);
+        logger.info("Sending file: {} (size: {} bytes)", file.getName(), file.length());
 
-        HttpEntity<byte[]> fileEntity = new HttpEntity<>(Files.readAllBytes(file.toPath()), createFileHeaders(file.getName()));
-        body.add("file", fileEntity);
+        // Use FileSystemResource to stream the file (no need to read all bytes)
+        FileSystemResource fileResource = new FileSystemResource(file) {
+            @Override
+            public String getFilename() {
+                return file.getName();
+            }
+        };
+        body.add("file", fileResource);
         body.add("language", language);
         body.add("extractTasks", String.valueOf(extractTasks));
         body.add("generateSummary", String.valueOf(generateSummary));
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
-
-        return objectMapper.readValue(response.getBody(), AIResponse.class);
-    }
-
-    private HttpHeaders createFileHeaders(String filename) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDispositionFormData("file", filename);
-        return headers;
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            logger.info("AI service responded with status: {}", response.getStatusCode());
+            logger.debug("Response body: {}", response.getBody());
+            return objectMapper.readValue(response.getBody(), AIResponse.class);
+        } catch (Exception e) {
+            logger.error("Error calling AI service: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 }
